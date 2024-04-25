@@ -3,15 +3,14 @@ import asyncio
 import sys
 import json
 import time
+from typing import NoReturn
+from ticket_setup import *
 from datetime import datetime, timedelta
 from discord.ext import commands
-from typing import NoReturn
-
 
 intents = discord.Intents.default()
 bot = commands.Bot(command_prefix='!', intents=intents)
 intents.message_content = True
-
 
 """
 ___________________________________________________________NOTE_________________________________________________________
@@ -36,13 +35,8 @@ IF YOU HAVE ANY QUESTIONS ABOUT THE SCRIPT OR WANT TO SUGGEST SOMETHING PLEASE C
 ________________________________________________________________________________________________________________________
 """
 
-
-ticket_category_id = "12345"  # category where you want tickets to be made. (OPTIONAL)
-ticket_manager_role_id = ""  # ticket managers will get access to tickets. (REQUIRED)
-ticket_logging_channel_id = "12345"  # this is where tickets will be logged if ticket is created or closed. (REQUIRED)
-
-BOT_TOKEN = "your bot token here"  # the token of your bot. it will be used to run the bot and add the commands to it.
-# ^ (REQUIRED)
+BOT_TOKEN = ""
+# ^  the token of your bot. it will be used to run the bot and add the commands to it. (REQUIRED)
 
 """
 ONLY ENTER THIS ZONE IF YOU UNDERSTAND EVERYTHING.
@@ -54,9 +48,12 @@ if not ticket_manager_role_id.isdigit():
 if not ticket_logging_channel_id:
     sys.exit("Please paste a logging channel ID....")
 
+if not seconds_before_deleting_ticket:
+    sys.exit("Please enter a ticket closing duration in ticket_setup.py "
+             "Error: Missing \"seconds_before_deleting_ticket\"")
+
 
 def save_ticket_to_json(ticket_channel_id: str) -> NoReturn:
-
     with open('ticket_data.json', 'r') as read_file:
         ticket_data = json.load(read_file)
 
@@ -108,7 +105,6 @@ def get_ticket_total_msgs(ticket_channel_id):
     counter: int = 0
     for counts in ticket_data['opened_tickets'][ticket_channel_id].values():
         counter += counts
-    print(counter)
     return counter
 
 
@@ -132,17 +128,50 @@ class CreateAChannelButton(discord.ui.View):
         super().__init__(timeout=7776000)
 
     @discord.ui.button(label='Create a ticket', style=discord.ButtonStyle.success)
-    async def create_channel(self, interaction: discord.Interaction, button: discord.ui.Button) -> NoReturn:
+    async def create_channel(self, interaction: discord.Interaction, button: discord.ui.Button):
         if button:
             pass
 
-        guild_category = None if not ticket_category_id.isdigit() else await bot.fetch_channel(int(ticket_category_id))
-        guild_role: discord.Role = interaction.guild.get_role(int(ticket_manager_role_id))
-        guild_everyone_role: discord.Role = interaction.guild.get_role(interaction.guild.id)
-        logging_channel = bot.get_channel(int(ticket_logging_channel_id))
+        try:
+            ticket_category_object = bot.fetch_channel(int(ticket_category_id))
+        except ValueError:
+            ticket_category_object = None
 
-        role_overwrite = discord.PermissionOverwrite.from_pair(
+        guild_category = (None if not ticket_category_object else ticket_category_object)
+
+        ticket_manager_role: discord.Role = interaction.guild.get_role(int(ticket_manager_role_id))
+
+        if not ticket_manager_role:
+            await interaction.response.send_message(f"Incorrect manager role ID: **{ticket_manager_role_id}** "
+                                                    f"provided in \"ticket_setup.py\". Please paste correct ID.",
+                                                    ephemeral=True)
+            return
+
+        guild_everyone_role: discord.Role = interaction.guild.get_role(interaction.guild.id)
+
+        logging_channel = bot.get_channel(int(ticket_logging_channel_id))
+        if not logging_channel:
+            await interaction.response.send_message(f"Incorrect ticket logging ID: **{ticket_logging_channel_id}** "
+                                                    f"Provided in: \"ticket_setup.py\". Please paste correct ID.",
+                                                    ephemeral=True)
+            return
+
+        bot_role = None
+        all_bot_roles = bot.get_guild(interaction.guild.id).get_member(bot.user.id)
+
+        for role in all_bot_roles.roles:
+
+            if role.is_bot_managed():
+                bot_role = role
+                break
+
+        manager_role_overwrite = discord.PermissionOverwrite.from_pair(
             discord.Permissions(117824),
+            discord.Permissions.none()
+        )
+
+        bot_overwrite = discord.PermissionOverwrite.from_pair(
+            discord.Permissions(2147609680),
             discord.Permissions.none()
         )
 
@@ -158,18 +187,25 @@ class CreateAChannelButton(discord.ui.View):
 
         guild_permission_format = {
 
-            guild_role: role_overwrite,
+            ticket_manager_role: manager_role_overwrite,
             interaction.user: user_overwrite,
-            guild_everyone_role: everyone_role_overwrite
+            guild_everyone_role: everyone_role_overwrite,
+            bot_role: bot_overwrite
 
         }
 
-        created_channel = await interaction.guild.create_text_channel(name=f"ticket-{interaction.user.name}",
-                                                                      category=guild_category,
-                                                                      topic=f'This is a ticket of: '
-                                                                            f'<@{interaction.user.id}>',
-                                                                      overwrites=guild_permission_format)
+        try:
+            created_channel = await interaction.guild.create_text_channel(name=f"ticket-{interaction.user.name}",
+                                                                          category=guild_category,
+                                                                          topic=f'This is a ticket of: '
+                                                                                f'<@{interaction.user.id}>',
+                                                                          overwrites=guild_permission_format)
+        except discord.errors.Forbidden:
+            await interaction.response.send_message("I dont have permission to create channel.", ephemeral=True)
+            return
+
         save_ticket_to_json(str(created_channel.id))
+
         start_time = time.time()
 
         await interaction.response.send_message(f"Successfully created your ticket: {created_channel.mention}",
@@ -204,21 +240,27 @@ class CreateAChannelButton(discord.ui.View):
         embed.set_thumbnail(url=interaction.guild.icon)
         embed.set_author(icon_url=interaction.user.avatar, name=interaction.user.name,
                          url=f'https://discord.com/users/{interaction.user.id}')
-        logging_message = await logging_channel.send(embed=embed)
+        try:
+            logging_message = await logging_channel.send(embed=embed)
+        except discord.errors.Forbidden:
+            await interaction.response.send_message("I dont have permission to send messages in logging channel.")
+            return
 
         view = CloseTicketButton(channel_object=created_channel, ticket_author_object=interaction.user,
                                  guild_object=interaction.guild, ticket_category_object=guild_category,
-                                 ticket_manager_role_object=guild_role, start_time=start_time,
+                                 ticket_manager_role_object=ticket_manager_role, start_time=start_time,
                                  ticket_creation=ticket_created_formatted_date, logging_message_object=logging_message,
                                  guild_joined_date=user_guild_creation_formatted_date,
                                  user_join_date=user_creation_formatted_date, logging_channel=logging_channel)
 
-        await created_channel.send(f"""Welcome! {interaction.user.mention} 
-Please explain your issue and one of our staff will be with you to assist you.
-Please make sure to follow server rules and be patient. do not spam ping any of our {guild_role.mention}. 
-
-Thanks! -{interaction.guild.name} team.
-""",
+        await created_channel.send(f"{message_on_creation.replace("{interaction.guild.name}", 
+                                                                  str(interaction.guild.name))
+                                                         
+                                                         .replace("{interaction.user.name}", 
+                                                                  str(interaction.user.name))
+                                                         
+                                                         .replace("{interaction.user.mention}", 
+                                                                  str(interaction.user.mention))}",
                                    view=view)
 
 
@@ -242,12 +284,16 @@ class CloseTicketButton(discord.ui.View):
         self.logging_channel = logging_channel
 
     @discord.ui.button(label='Close ticket', style=discord.ButtonStyle.red)
-    async def close(self, interaction: discord.Interaction, button: discord.ui.button) -> NoReturn:
+    async def close(self, interaction: discord.Interaction, button: discord.ui.button):
         if button:
             pass
-        await interaction.response.send_message('This ticket will be deleted in 15 seconds...')
-        await asyncio.sleep(15)
-        await self.user_channel.delete()
+        await interaction.response.send_message(f"{message_on_deletion.replace("{seconds_before_deleting_ticket}", 
+                                                                             f"{seconds_before_deleting_ticket}")}")
+        await asyncio.sleep(int(seconds_before_deleting_ticket))
+        try:
+            await self.user_channel.delete()
+        except discord.errors.Forbidden:
+            await self.user_channel.send("I dont have permission to delete channels.")
 
         total_msgs = get_ticket_total_msgs(self.user_channel.id)
         all_users_msgs = 0 if not get_all_ticket_users(self.user_channel.id) \
@@ -268,52 +314,55 @@ class CloseTicketButton(discord.ui.View):
                       f'{formatting_datetime.second}S')
 
         embed = discord.Embed(
-                title='Ticket Deleted',
-                description=f"Ticket opened by: {self.ticket_creator.name}\n\n"
-                            f"__User Info:__\n\n"
-                            f"- **User ID:** {self.ticket_creator.id}\n"
-                            f"- **User Mention:** {self.ticket_creator.mention}\n"
-                            f"- **User Creation Date:** <t:{int(self.user_join_date.timestamp())}:f>\n"
-                            f"- **Server Member Since:** <t:{int(self.guild_joined_date.timestamp())}:f>\n\n"
-                            f"__Ticket Info:__\n\n"
-                            f"- **Ticket Name:** {self.user_channel.name}\n"
-                            f"- **Ticket Creation:** {self.ticket_created_time.timestamp()}\n"
-                            f"- **Ticket Channel ID:** {self.user_channel.id}\n"
-                            f"- **Ticket Mention:** {self.user_channel.mention}\n\n"
-                            f"- **Ticket Closed by:** {interaction.user.mention}\n"
-                            f"- **Ticket Closed At:** <t:{int(ticket_deleted_formatted_date_unix.timestamp())}:f>\n"
-                            f"- **Ticket Active Duration:** {formatting}\n"
-                            f"- **Ticket Opening Log:** "
-                            f"https://discord.com/channels/{interaction.guild.id}/{self.logging_channel.id}/"
-                            f"{self.logging_message.id}\n\n"
-                            f"__Ticket Chat Info:__\n\n"
-                            f"- **Total Messages Sent:** {total_msgs}\n"
-                            f"- **Messages By Users:**\n " + "".join(f"\n> - {users}: {counter}"
-                                                                     for users, counter in all_users_msgs.items()),
-                color=discord.Color.brand_red()
+            title='Ticket Deleted',
+            description=f"Ticket opened by: {self.ticket_creator.name}\n\n"
+                        f"__User Info:__\n\n"
+                        f"- **User ID:** {self.ticket_creator.id}\n"
+                        f"- **User Mention:** {self.ticket_creator.mention}\n"
+                        f"- **User Creation Date:** <t:{int(self.user_join_date.timestamp())}:f>\n"
+                        f"- **Server Member Since:** <t:{int(self.guild_joined_date.timestamp())}:f>\n\n"
+                        f"__Ticket Info:__\n\n"
+                        f"- **Ticket Name:** {self.user_channel.name}\n"
+                        f"- **Ticket Creation:** {self.ticket_created_time.timestamp()}\n"
+                        f"- **Ticket Channel ID:** {self.user_channel.id}\n"
+                        f"- **Ticket Mention:** {self.user_channel.mention}\n\n"
+                        f"- **Ticket Closed by:** {interaction.user.mention}\n"
+                        f"- **Ticket Closed At:** <t:{int(ticket_deleted_formatted_date_unix.timestamp())}:f>\n"
+                        f"- **Ticket Active Duration:** {formatting}\n"
+                        f"- **Ticket Opening Log:** "
+                        f"https://discord.com/channels/{interaction.guild.id}/{self.logging_channel.id}/"
+                        f"{self.logging_message.id}\n\n"
+                        f"__Ticket Chat Info:__\n\n"
+                        f"- **Total Messages Sent:** {total_msgs}\n"
+                        f"- **Messages By Users:**\n " + "".join(f"\n> - {users}: {counter}"
+                                                                 for users, counter in all_users_msgs.items()),
+            color=discord.Color.brand_red()
         )
         embed.set_thumbnail(url=interaction.guild.icon)
         embed.set_author(icon_url=interaction.user.avatar, name=interaction.user.name,
                          url=f'https://discord.com/users/{interaction.user.id}')
 
-        await self.logging_channel.send(embed=embed)
+        try:
+            await self.logging_channel.send(embed=embed)
+        except discord.errors.Forbidden:
+            await interaction.response.send_message("I dont have permission to send messages in logging channel.",
+                                                    ephemeral=True)
         clear_ticket_from_json(self.user_channel.id)
 
 
 @bot.hybrid_command(name='ticket-setup')
 async def ok(ctx, ticket_panel: discord.TextChannel):
-
     embed = discord.Embed(
-        title=f"{ctx.guild.name}'s support system.",
-        description=f"Please press the button below to contact staff.\n"
-                    f"Avoid opening tickets for no reason.\n"
-                    f"Do not false report somebody.\n"
-                    f"Do not make false claims or pretend to be someone\n"
-                    f"Not following them will result in punishment.",
+        title=f"{title_on_button_embed.replace("{ctx.guild.name}", f"{ctx.guild.name}")}",
+
+
+        description=f"{description_on_button_embed.replace("{ctx.guild.name}", str(ctx.guild.name))
+                                                  .replace("{ctx.guild.id}", str(ctx.guild.id))}",
+
         color=discord.Color.brand_green()
     )
     embed.set_thumbnail(url=ctx.guild.icon)
-    embed.set_footer(text='Not every rule is listed. Please use common sense.')
+    embed.set_footer(text=f"{footer_on_button_embed}")
 
     view = CreateAChannelButton()
 
@@ -346,4 +395,9 @@ async def on_ready():
     print('Successfully logged in as:', bot.user.name)
 
 
-bot.run(BOT_TOKEN)
+try:
+    bot.run(BOT_TOKEN)
+except discord.errors.LoginFailure:
+    timing = datetime.strftime(datetime.now(), "%Y-%m-%d %H:%M:%S")
+    sys.exit(f"\n[{timing}] [ERROR   ] Could not start up: You've provided the incorrect bot token...")
+
