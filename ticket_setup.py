@@ -13,11 +13,11 @@ ticket_category_id = ""
 # ^  category where you want tickets to be made. (OPTIONAL)
 
 
-ticket_manager_role_id = "1231778425060982815"
+ticket_manager_role_id = "12345"
 # ^  ticket managers will get access to tickets. (REQUIRED)
 
 
-ticket_logging_channel_id = "1232312201126219806"
+ticket_logging_channel_id = "12345"
 # ^  this is where tickets will be logged if ticket is created or closed. (REQUIRED)
 
 seconds_before_deleting_ticket = 15
