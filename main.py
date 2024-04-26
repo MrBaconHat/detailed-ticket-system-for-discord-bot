@@ -5,6 +5,7 @@ import json
 import time
 from typing import NoReturn
 from ticket_setup import *
+from source import BOT_TOKEN
 from datetime import datetime, timedelta
 from discord.ext import commands
 
@@ -23,7 +24,7 @@ DOING THAT WILL RESULT IN GIVING BACKDOOR OF YOUR BOT TO SOMEBODY.              
 CREATOR OF THIS SCRIPT(mr_baconhat, me) WILL NOT BE RESPONSIBLE IF YOU ENDED UP LEAKING SOMETHING IMPORTANT            |
 SUCH AS YOUR BOT TOKEN.                                                                                                |
                                                                                                                        |
-                                                    YOU HAVE BEEN WARNED..                                             |                                                 
+                                                   YOU HAVE BEEN WARNED.                                               |                                                 
                                                                                                                        |
 IF YOU UNDERSTAND PYTHON YOU SHOULD CREATE .env(environment) FILE TO SECURE YOUR BOT TOKEN.                            |
 BUT IF YOU DON'T UNDERSTAND PYTHON AT ALL YOU CAN CONTINUE USING SCRIPT LIKE THIS BUT BE SURE TO NOT SHARE THIS SCRIPT |
@@ -35,7 +36,7 @@ IF YOU HAVE ANY QUESTIONS ABOUT THE SCRIPT OR WANT TO SUGGEST SOMETHING PLEASE C
 _______________________________________________________________________________________________________________________|
 """
 
-BOT_TOKEN = "your bot token here..."
+BOT_TOKEN = BOT_TOKEN
 # ^  the token of your bot. it will be used to run the bot and add the commands to it. (REQUIRED)
 
 """
@@ -97,7 +98,7 @@ def add_members_to_json(ticket_channel_id: str, member_id: str) -> NoReturn:
         json.dump(ticket_data, write_file, indent=4)
 
 
-def get_ticket_total_msgs(ticket_channel_id):
+def get_ticket_total_msgs(ticket_channel_id) -> int:
     ticket_channel_id = str(ticket_channel_id)
     with open('ticket_data.json', 'r') as read_file:
         ticket_data = json.load(read_file)
@@ -266,7 +267,7 @@ class CreateAChannelButton(discord.ui.View):
                                             str(interaction.user.id))
 
                                    .replace("{manager_role}",
-                                            str(self.ticket_manager_role.mention))
+                                            str(ticket_manager_role.mention))
         }",
                                    view=view)
 
@@ -310,6 +311,9 @@ class CloseTicketButton(discord.ui.View):
 
                                                 .replace("{manager_role}",
                                                          str(self.ticket_manager_role.mention))
+                                                
+                                                .replace("{server_name}",
+                                                         str(interaction.guild.name))
         }")
         await asyncio.sleep(int(seconds_before_deleting_ticket))
         try:
@@ -429,4 +433,5 @@ try:
 except discord.errors.LoginFailure:
     timing = datetime.strftime(datetime.now(), "%Y-%m-%d %H:%M:%S")
     sys.exit(f"\n[{timing}] [ERROR   ] Could not start up: You've provided the incorrect bot token...\n\n"
-             f"Incorrect bot token: \"{BOT_TOKEN}\"")
+             f"Incorrect bot token: {BOT_TOKEN}")
+
