@@ -16,7 +16,7 @@ intents.message_content = True
 ___________________________________________________________NOTE_________________________________________________________
                                                                                                                        |
 PLEASE USE THIS CODE WITH CAUTION. DO NOT ATTEMPT TO CHANGE ANYTHING UNLESS YOU KNOW AND UNDERSTAND THE SCRIPT PURPOSE.|
-TO NOT PASTE ANY SCRIPT IN THIS ZONE. THE SCRIPT CAN BE MALICIOUS AND CAN RESULT IN DAMAGING THE BOT AND GIVING        |
+DO NOT PASTE ANY SCRIPT IN THIS ZONE. THE SCRIPT CAN BE MALICIOUS AND CAN RESULT IN DAMAGING THE BOT AND GIVING        |
 UNAUTHORIZED ACCESS TO SOMEBODY OF YOUR BOT. DO NOT SHARE THIS SCRIPT WITH ANYONE IF YOU HAVE YOUR BOT TOKEN PLACED.   |
 DOING THAT WILL RESULT IN GIVING BACKDOOR OF YOUR BOT TO SOMEBODY.                                                     |
                                                                                                                        |
@@ -32,10 +32,10 @@ WITH ANYONE WITH YOUR BOT TOKEN PLACED INSIDE IT.                               
                                                    made by: mr_baconhat :]                                             |
                                                                                                                        |
 IF YOU HAVE ANY QUESTIONS ABOUT THE SCRIPT OR WANT TO SUGGEST SOMETHING PLEASE CONTACT: mr_baconhat(discord)           |
-________________________________________________________________________________________________________________________
+_______________________________________________________________________________________________________________________|
 """
 
-BOT_TOKEN = ""
+BOT_TOKEN = "your bot token here..."
 # ^  the token of your bot. it will be used to run the bot and add the commands to it. (REQUIRED)
 
 """
@@ -400,4 +400,3 @@ try:
 except discord.errors.LoginFailure:
     timing = datetime.strftime(datetime.now(), "%Y-%m-%d %H:%M:%S")
     sys.exit(f"\n[{timing}] [ERROR   ] Could not start up: You've provided the incorrect bot token...")
-
