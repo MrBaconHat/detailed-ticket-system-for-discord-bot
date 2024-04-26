@@ -428,4 +428,5 @@ try:
     bot.run(BOT_TOKEN)
 except discord.errors.LoginFailure:
     timing = datetime.strftime(datetime.now(), "%Y-%m-%d %H:%M:%S")
-    sys.exit(f"\n[{timing}] [ERROR   ] Could not start up: You've provided the incorrect bot token...")
+    sys.exit(f"\n[{timing}] [ERROR   ] Could not start up: You've provided the incorrect bot token...\n\n"
+             f"Incorrect bot token: \"{BOT_TOKEN}\"")
