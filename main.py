@@ -253,14 +253,21 @@ class CreateAChannelButton(discord.ui.View):
                                  guild_joined_date=user_guild_creation_formatted_date,
                                  user_join_date=user_creation_formatted_date, logging_channel=logging_channel)
 
-        await created_channel.send(f"{message_on_creation.replace("{interaction.guild.name}", 
+        await created_channel.send(f"{message_on_creation.replace("{server_name}",
                                                                   str(interaction.guild.name))
-                                                         
-                                                         .replace("{interaction.user.name}", 
-                                                                  str(interaction.user.name))
-                                                         
-                                                         .replace("{interaction.user.mention}", 
-                                                                  str(interaction.user.mention))}",
+
+                                   .replace("{user_name}",
+                                            str(interaction.user.name))
+
+                                   .replace("{user_mention}",
+                                            str(interaction.user.mention))
+
+                                   .replace("{user_id}",
+                                            str(interaction.user.id))
+
+                                   .replace("{manager_role}",
+                                            str(self.ticket_manager_role.mention))
+        }",
                                    view=view)
 
 
@@ -287,8 +294,23 @@ class CloseTicketButton(discord.ui.View):
     async def close(self, interaction: discord.Interaction, button: discord.ui.button):
         if button:
             pass
-        await interaction.response.send_message(f"{message_on_deletion.replace("{seconds_before_deleting_ticket}", 
-                                                                             f"{seconds_before_deleting_ticket}")}")
+        await interaction.response.send_message(f"{message_on_deletion
+
+                                                .replace("{seconds}",
+                                                         f"{seconds_before_deleting_ticket}")
+
+                                                .replace("{user_name}",
+                                                         str(interaction.user.name))
+
+                                                .replace("{user_mention}",
+                                                         str(interaction.user.mention))
+
+                                                .replace("{user_id}",
+                                                         str(interaction.user.id))
+
+                                                .replace("{manager_role}",
+                                                         str(self.ticket_manager_role.mention))
+        }")
         await asyncio.sleep(int(seconds_before_deleting_ticket))
         try:
             await self.user_channel.delete()
@@ -353,16 +375,23 @@ class CloseTicketButton(discord.ui.View):
 @bot.hybrid_command(name='ticket-setup')
 async def ok(ctx, ticket_panel: discord.TextChannel):
     embed = discord.Embed(
-        title=f"{title_on_button_embed.replace("{ctx.guild.name}", f"{ctx.guild.name}")}",
+        title=f"{title_on_button_embed.replace("{server_name}", f"{ctx.guild.name}")}",
 
+        description=f"{description_on_button_embed.replace("{server_name}", 
+                                                           str(ctx.guild.name))
+        
+                                                  .replace("{server_id}", 
+                                                           str(ctx.guild.id))
 
-        description=f"{description_on_button_embed.replace("{ctx.guild.name}", str(ctx.guild.name))
-                                                  .replace("{ctx.guild.id}", str(ctx.guild.id))}",
+                                                  }",
 
         color=discord.Color.brand_green()
     )
     embed.set_thumbnail(url=ctx.guild.icon)
-    embed.set_footer(text=f"{footer_on_button_embed}")
+    embed.set_footer(text=f"{footer_on_button_embed.replace('{server_name}', str(ctx.guild.name))
+                                                    
+                                                    .replace("{server_id}", str(ctx.guild.id))
+    }")
 
     view = CreateAChannelButton()
 
