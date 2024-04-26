@@ -5,7 +5,6 @@ import json
 import time
 from typing import NoReturn
 from ticket_setup import *
-from source import BOT_TOKEN
 from datetime import datetime, timedelta
 from discord.ext import commands
 
@@ -36,7 +35,7 @@ IF YOU HAVE ANY QUESTIONS ABOUT THE SCRIPT OR WANT TO SUGGEST SOMETHING PLEASE C
 _______________________________________________________________________________________________________________________|
 """
 
-BOT_TOKEN = BOT_TOKEN
+BOT_TOKEN = "your bot token here..."
 # ^  the token of your bot. it will be used to run the bot and add the commands to it. (REQUIRED)
 
 """
