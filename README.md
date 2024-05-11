@@ -27,20 +27,30 @@
 >         If you are running this script in replit then i HIGHLY suggest you to use "secrets" built-in feature of replit as anyone can access your repl and grab 
 >         your bot token if your repl is public.
 >
->                                                    **PLEASE USE THIS SCRIPT WITH CAUTION**
+>                                                         **PLEASE USE THIS SCRIPT WITH CAUTION**
 
 
 
 > **EXTRAS:**
 >
+>   I thought it'd be great to display how logging looks like. So here you go:
+>      
+
 >   There are some extra things i'd like to mention.
+>        ![Ticket close logging](https://github.com/MrBaconHat/detailed-ticket-system-for-discord-bot/assets/109857632/5848dd70-493b-4085-9424-74277bdd0810)
+>        ![Ticket open logging](https://github.com/MrBaconHat/detailed-ticket-system-for-discord-bot/assets/109857632/e39c7c3c-847d-4841-b02b-01aefd8c5ff6)
+
+
+>   You have full rights to use this script. But you are not allowed to claim ownership of this script by yourself.
 >
->         **RIGHTS & OTHERS:**
->                You have full rights to use this script. But you are not allowed to claim ownership of this script by yourself.
->                it'll be very kind of you to give me credits. This script is my hard work.
->                Please remember that i will not be responsible for anything caused by this script after you pasted somebody else script or if you leak your bot token.
->                As mentioned above. The scripts main goal is to create a working ticketing system on your bot. Nothing else...
+>   it'll be very kind of you to give me credits. This script is my hard work.
 >
->                If you love the script please considering liking this repository This will motivate me. Script made by: mr_baconhat(Discord) :]
+>   Please remember that i will not be responsible for anything caused by this script after you pasted somebody else script or if you leak your bot token.
 >
->                Feel free to reach out to me if you have any questions (i may not always accept your request)
+>   As mentioned above. The scripts main goal is to create a working ticketing system on your bot. Nothing else...
+>
+>   The script *might* receive updates in future. So be sure to check the new changes out and let me know :]
+>
+>   If you love the script please considering liking this repository This will motivate me. Script made by: mr_baconhat(Discord) :]
+>
+>   Feel free to reach out to me if you have any questions (i may not always accept your request)
