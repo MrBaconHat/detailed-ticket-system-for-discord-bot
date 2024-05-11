@@ -34,11 +34,11 @@
 > **EXTRAS:**
 >
 >   I thought it'd be great to display how logging looks like. So here you go:
+>        Closing ticket logging: ![Ticket close logging](https://github.com/MrBaconHat/detailed-ticket-system-for-discord-bot/assets/109857632/5848dd70-493b-4085-9424-74277bdd0810)
+>        Opening ticket logging: ![Ticket open logging](https://github.com/MrBaconHat/detailed-ticket-system-for-discord-bot/assets/109857632/e39c7c3c-847d-4841-b02b-01aefd8c5ff6)
 >      
 
 >   There are some extra things i'd like to mention.
->        ![Ticket close logging](https://github.com/MrBaconHat/detailed-ticket-system-for-discord-bot/assets/109857632/5848dd70-493b-4085-9424-74277bdd0810)
->        ![Ticket open logging](https://github.com/MrBaconHat/detailed-ticket-system-for-discord-bot/assets/109857632/e39c7c3c-847d-4841-b02b-01aefd8c5ff6)
 
 
 >   You have full rights to use this script. But you are not allowed to claim ownership of this script by yourself.
