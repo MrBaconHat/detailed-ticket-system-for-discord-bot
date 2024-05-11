@@ -30,6 +30,12 @@
 >                                                         **PLEASE USE THIS SCRIPT WITH CAUTION**
 
 
+> **RISKS OF BOT TOKEN EXPOSURE:**
+>         Exposing your bot token can result in giving control of your discord bot to omebody else. This will allow themto do ANYTHING.
+>         Please DO NOT expose your bot token. You can always reset it from discord developers portal.
+>         The person can do anything with your bot... Like: Raid your servers, Nuke your servers, Mass dm your server members and asking them to join a server... and so much more....
+>     **DO NOT EXPOSE YOUR BOT TOKEN... YOU HAVE BEEN WARNED...**
+
 
 > **EXTRAS:**
 >
