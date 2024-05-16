@@ -4,7 +4,10 @@ import sys
 import json
 import time
 from typing import NoReturn
-from ticket_setup import *
+from ticket_setup import (seconds_before_deleting_ticket, message_on_deletion, message_on_creation,
+                          ticket_manager_role_id, description_on_button_embed, footer_on_button_embed,
+                          title_on_button_embed, ticket_category_id, ticket_logging_channel_id)
+from source import BOT_TOKEN
 from datetime import datetime, timedelta
 from discord.ext import commands
 
@@ -14,7 +17,7 @@ intents.message_content = True
 
 """
 ___________________________________________________________NOTE_________________________________________________________
-                                                                                                                       |
+                                                                                                                     |
 PLEASE USE THIS CODE WITH CAUTION. DO NOT ATTEMPT TO CHANGE ANYTHING UNLESS YOU KNOW AND UNDERSTAND THE SCRIPT PURPOSE.|
 DO NOT PASTE ANY SCRIPT IN THIS ZONE. THE SCRIPT CAN BE MALICIOUS AND CAN RESULT IN DAMAGING THE BOT AND GIVING        |
 UNAUTHORIZED ACCESS TO SOMEBODY OF YOUR BOT. DO NOT SHARE THIS SCRIPT WITH ANYONE IF YOU HAVE YOUR BOT TOKEN PLACED.   |
@@ -23,7 +26,7 @@ DOING THAT WILL RESULT IN GIVING BACKDOOR OF YOUR BOT TO SOMEBODY.              
 CREATOR OF THIS SCRIPT(mr_baconhat, me) WILL NOT BE RESPONSIBLE IF YOU ENDED UP LEAKING SOMETHING IMPORTANT            |
 SUCH AS YOUR BOT TOKEN.                                                                                                |
                                                                                                                        |
-                                                   YOU HAVE BEEN WARNED.                                               |                                                 
+                                                   YOU HAVE BEEN WARNED.                                               | 
                                                                                                                        |
 IF YOU UNDERSTAND PYTHON YOU SHOULD CREATE .env(environment) FILE TO SECURE YOUR BOT TOKEN.                            |
 BUT IF YOU DON'T UNDERSTAND PYTHON AT ALL YOU CAN CONTINUE USING SCRIPT LIKE THIS BUT BE SURE TO NOT SHARE THIS SCRIPT |
@@ -35,18 +38,22 @@ IF YOU HAVE ANY QUESTIONS ABOUT THE SCRIPT OR WANT TO SUGGEST SOMETHING PLEASE C
 _______________________________________________________________________________________________________________________|
 """
 
-BOT_TOKEN = "your bot token here..."
+BOT_TOKEN = BOT_TOKEN
 # ^  the token of your bot. it will be used to run the bot and add the commands to it. (REQUIRED)
 
 """
 ONLY ENTER THIS ZONE IF YOU UNDERSTAND EVERYTHING.
 """
 
-if not ticket_manager_role_id.isdigit():
-    sys.exit('Please put your manager role ID.... It is a required input....')
+for roles in ticket_manager_role_id:
+    if not roles.isdigit():
+        sys.exit(f'Your manager role ID: {roles} is incorrect.. Please enter it correctly')
+
+if not ticket_manager_role_id:
+    sys.exit('Please put your manager role ID. It is a required input.')
 
 if not ticket_logging_channel_id:
-    sys.exit("Please paste a logging channel ID....")
+    sys.exit("Please paste a logging channel ID.")
 
 if not seconds_before_deleting_ticket:
     sys.exit("Please enter a ticket closing duration in ticket_setup.py "
@@ -122,6 +129,18 @@ def get_all_ticket_users(ticket_channel_id) -> dict:
     return dictionary
 
 
+def variable_management(message, seconds="", user_id="", user_name="", user_mention="", server_name="", manager_role="",
+                        server_id=""):
+    return (message
+            .replace('{seconds}', f'{seconds}')
+            .replace('{user_id}', f'{user_id}')
+            .replace('{user_name}', f'{user_name}')
+            .replace('{user_mention}', f'{user_mention}')
+            .replace('{server_name}', f'{server_name}')
+            .replace('{manager_role}', f'{manager_role}')
+            .replace('{server_id}', f'{server_id}'))
+
+
 class CreateAChannelButton(discord.ui.View):
 
     def __init__(self):
@@ -139,13 +158,10 @@ class CreateAChannelButton(discord.ui.View):
 
         guild_category = (None if not ticket_category_object else ticket_category_object)
 
-        ticket_manager_role: discord.Role = interaction.guild.get_role(int(ticket_manager_role_id))
-
+        ticket_manager_role_base = [interaction.guild.get_role(int(role_id)) for role_id in ticket_manager_role_id]
+        ticket_manager_role = [manager_roles for manager_roles in ticket_manager_role_base if manager_roles]
         if not ticket_manager_role:
-            await interaction.response.send_message(f"Incorrect manager role ID: **{ticket_manager_role_id}** "
-                                                    f"provided in \"ticket_setup.py\". Please paste correct ID.",
-                                                    ephemeral=True)
-            return
+            sys.exit("Manager IDs are incorrect... Please enter correct Manager IDs to continue\n\n\n\n")
 
         guild_everyone_role: discord.Role = interaction.guild.get_role(interaction.guild.id)
 
@@ -162,7 +178,7 @@ class CreateAChannelButton(discord.ui.View):
         for role in all_bot_roles.roles:
 
             if role.is_bot_managed():
-                bot_role = role
+                bot_role = interaction.guild.get_role(role.id)
                 break
 
         manager_role_overwrite = discord.PermissionOverwrite.from_pair(
@@ -186,13 +202,12 @@ class CreateAChannelButton(discord.ui.View):
         )
 
         guild_permission_format = {
-
-            ticket_manager_role: manager_role_overwrite,
             interaction.user: user_overwrite,
             guild_everyone_role: everyone_role_overwrite,
-            bot_role: bot_overwrite
-
+            bot_role: bot_overwrite,
         }
+        for role in ticket_manager_role:
+            guild_permission_format[role] = manager_role_overwrite
 
         try:
             created_channel = await interaction.guild.create_text_channel(name=f"ticket-{interaction.user.name}",
@@ -253,21 +268,13 @@ class CreateAChannelButton(discord.ui.View):
                                  guild_joined_date=user_guild_creation_formatted_date,
                                  user_join_date=user_creation_formatted_date, logging_channel=logging_channel)
 
-        await created_channel.send(f"{message_on_creation.replace("{server_name}",
-                                                                  str(interaction.guild.name))
+        modified_message_on_creation = variable_management(
+            message=message_on_creation, server_name=interaction.guild.name,
+            user_id=interaction.user.id, user_name=interaction.user.name,
+            user_mention=interaction.user.mention,
+            manager_role="".join(f"<@&{role.id}>, " for role in ticket_manager_role))
 
-                                   .replace("{user_name}",
-                                            str(interaction.user.name))
-
-                                   .replace("{user_mention}",
-                                            str(interaction.user.mention))
-
-                                   .replace("{user_id}",
-                                            str(interaction.user.id))
-
-                                   .replace("{manager_role}",
-                                            str(ticket_manager_role.mention))
-        }",
+        await created_channel.send(modified_message_on_creation,
                                    view=view)
 
 
@@ -294,26 +301,15 @@ class CloseTicketButton(discord.ui.View):
     async def close(self, interaction: discord.Interaction, button: discord.ui.button):
         if button:
             pass
-        await interaction.response.send_message(f"{message_on_deletion
 
-                                                .replace("{seconds}",
-                                                         f"{seconds_before_deleting_ticket}")
+        modified_message_on_deletion = variable_management(
+            message=message_on_deletion, server_name=interaction.guild.name,
+            user_id=str(interaction.user.id), user_name=interaction.user.name,
+            user_mention=interaction.user.mention,
+            manager_role="".join(f"<@&{role.id}>, " for role in self.ticket_manager_role),
+            seconds=seconds_before_deleting_ticket)
 
-                                                .replace("{user_name}",
-                                                         str(interaction.user.name))
-
-                                                .replace("{user_mention}",
-                                                         str(interaction.user.mention))
-
-                                                .replace("{user_id}",
-                                                         str(interaction.user.id))
-
-                                                .replace("{manager_role}",
-                                                         str(self.ticket_manager_role.mention))
-                                                
-                                                .replace("{server_name}",
-                                                         str(interaction.guild.name))
-        }")
+        await interaction.response.send_message(modified_message_on_deletion)
         await asyncio.sleep(int(seconds_before_deleting_ticket))
         try:
             await self.user_channel.delete()
@@ -348,7 +344,7 @@ class CloseTicketButton(discord.ui.View):
                         f"- **Server Member Since:** <t:{int(self.guild_joined_date.timestamp())}:f>\n\n"
                         f"__Ticket Info:__\n\n"
                         f"- **Ticket Name:** {self.user_channel.name}\n"
-                        f"- **Ticket Creation:** {self.ticket_created_time.timestamp()}\n"
+                        f"- **Ticket Creation:** {int(self.ticket_created_time.timestamp())}\n"
                         f"- **Ticket Channel ID:** {self.user_channel.id}\n"
                         f"- **Ticket Mention:** {self.user_channel.mention}\n\n"
                         f"- **Ticket Closed by:** {interaction.user.mention}\n"
@@ -376,25 +372,20 @@ class CloseTicketButton(discord.ui.View):
 
 
 @bot.hybrid_command(name='ticket-setup')
-async def ok(ctx, ticket_panel: discord.TextChannel):
+async def ticket(ctx, ticket_panel: discord.TextChannel):
+    modified_embed_title = variable_management(message=title_on_button_embed, server_name=ctx.guild.name)
+    modified_embed_description = variable_management(message=description_on_button_embed, server_name=ctx.guild.name,
+                                                     server_id=ctx.guild.id)
+    modified_embed_footer = variable_management(message=footer_on_button_embed, server_name=ctx.guild.name,
+                                                server_id=ctx.guild.id)
+
     embed = discord.Embed(
-        title=f"{title_on_button_embed.replace("{server_name}", f"{ctx.guild.name}")}",
-
-        description=f"{description_on_button_embed.replace("{server_name}", 
-                                                           str(ctx.guild.name))
-        
-                                                  .replace("{server_id}", 
-                                                           str(ctx.guild.id))
-
-                                                  }",
-
+        title=modified_embed_title,
+        description=modified_embed_description,
         color=discord.Color.brand_green()
     )
     embed.set_thumbnail(url=ctx.guild.icon)
-    embed.set_footer(text=f"{footer_on_button_embed.replace('{server_name}', str(ctx.guild.name))
-                                                    
-                                                    .replace("{server_id}", str(ctx.guild.id))
-    }")
+    embed.set_footer(text=modified_embed_footer)
 
     view = CreateAChannelButton()
 
@@ -429,8 +420,8 @@ async def on_ready():
 
 try:
     bot.run(BOT_TOKEN)
+
 except discord.errors.LoginFailure:
     timing = datetime.strftime(datetime.now(), "%Y-%m-%d %H:%M:%S")
     sys.exit(f"\n[{timing}] [ERROR   ] Could not start up: You've provided the incorrect bot token...\n\n"
              f"Incorrect bot token: {BOT_TOKEN}")
-
