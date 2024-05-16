@@ -7,7 +7,6 @@ from typing import NoReturn
 from ticket_setup import (seconds_before_deleting_ticket, message_on_deletion, message_on_creation,
                           ticket_manager_role_id, description_on_button_embed, footer_on_button_embed,
                           title_on_button_embed, ticket_category_id, ticket_logging_channel_id)
-from source import BOT_TOKEN
 from datetime import datetime, timedelta
 from discord.ext import commands
 
