@@ -37,7 +37,7 @@ IF YOU HAVE ANY QUESTIONS ABOUT THE SCRIPT OR WANT TO SUGGEST SOMETHING PLEASE C
 _______________________________________________________________________________________________________________________|
 """
 
-BOT_TOKEN = BOT_TOKEN
+BOT_TOKEN = "put your bot token here."
 # ^  the token of your bot. it will be used to run the bot and add the commands to it. (REQUIRED)
 
 """
