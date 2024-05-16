@@ -6,7 +6,8 @@ import time
 from typing import NoReturn
 from ticket_setup import (seconds_before_deleting_ticket, message_on_deletion, message_on_creation,
                           ticket_manager_role_id, description_on_button_embed, footer_on_button_embed,
-                          title_on_button_embed, ticket_category_id, ticket_logging_channel_id)
+                          title_on_button_embed, ticket_category_id, ticket_logging_channel_id,
+                          message_on_creation_ephemeral)
 from datetime import datetime, timedelta
 from discord.ext import commands
 
@@ -16,7 +17,7 @@ intents.message_content = True
 
 """
 ___________________________________________________________NOTE_________________________________________________________
-                                                                                                                     |
+                                                                                                                       |
 PLEASE USE THIS CODE WITH CAUTION. DO NOT ATTEMPT TO CHANGE ANYTHING UNLESS YOU KNOW AND UNDERSTAND THE SCRIPT PURPOSE.|
 DO NOT PASTE ANY SCRIPT IN THIS ZONE. THE SCRIPT CAN BE MALICIOUS AND CAN RESULT IN DAMAGING THE BOT AND GIVING        |
 UNAUTHORIZED ACCESS TO SOMEBODY OF YOUR BOT. DO NOT SHARE THIS SCRIPT WITH ANYONE IF YOU HAVE YOUR BOT TOKEN PLACED.   |
@@ -26,6 +27,7 @@ CREATOR OF THIS SCRIPT(mr_baconhat, me) WILL NOT BE RESPONSIBLE IF YOU ENDED UP 
 SUCH AS YOUR BOT TOKEN.                                                                                                |
                                                                                                                        |
                                                    YOU HAVE BEEN WARNED.                                               | 
+-----------------------------------------------------------------------------------------------------------------------|
                                                                                                                        |
 IF YOU UNDERSTAND PYTHON YOU SHOULD CREATE .env(environment) FILE TO SECURE YOUR BOT TOKEN.                            |
 BUT IF YOU DON'T UNDERSTAND PYTHON AT ALL YOU CAN CONTINUE USING SCRIPT LIKE THIS BUT BE SURE TO NOT SHARE THIS SCRIPT |
@@ -37,7 +39,7 @@ IF YOU HAVE ANY QUESTIONS ABOUT THE SCRIPT OR WANT TO SUGGEST SOMETHING PLEASE C
 _______________________________________________________________________________________________________________________|
 """
 
-BOT_TOKEN = "put your bot token here."
+BOT_TOKEN = "your bot token here..."
 # ^  the token of your bot. it will be used to run the bot and add the commands to it. (REQUIRED)
 
 """
@@ -129,7 +131,7 @@ def get_all_ticket_users(ticket_channel_id) -> dict:
 
 
 def variable_management(message, seconds="", user_id="", user_name="", user_mention="", server_name="", manager_role="",
-                        server_id=""):
+                        server_id="", ticket_mention="", ticket_name="", ticket_id=""):
     return (message
             .replace('{seconds}', f'{seconds}')
             .replace('{user_id}', f'{user_id}')
@@ -137,7 +139,10 @@ def variable_management(message, seconds="", user_id="", user_name="", user_ment
             .replace('{user_mention}', f'{user_mention}')
             .replace('{server_name}', f'{server_name}')
             .replace('{manager_role}', f'{manager_role}')
-            .replace('{server_id}', f'{server_id}'))
+            .replace('{server_id}', f'{server_id}')
+            .replace('{ticket_mention}', f'{ticket_mention}')
+            .replace('{ticket_name}', f'{ticket_name}')
+            .replace('{ticket_id}', f'{ticket_id}'))
 
 
 class CreateAChannelButton(discord.ui.View):
@@ -175,7 +180,6 @@ class CreateAChannelButton(discord.ui.View):
         all_bot_roles = bot.get_guild(interaction.guild.id).get_member(bot.user.id)
 
         for role in all_bot_roles.roles:
-
             if role.is_bot_managed():
                 bot_role = interaction.guild.get_role(role.id)
                 break
@@ -222,7 +226,16 @@ class CreateAChannelButton(discord.ui.View):
 
         start_time = time.time()
 
-        await interaction.response.send_message(f"Successfully created your ticket: {created_channel.mention}",
+        ephemeral_message_on_creation = variable_management(message=message_on_creation_ephemeral,
+                                                            server_name=interaction.guild.name,
+                                                            user_id=interaction.user.id,
+                                                            user_name=interaction.user.name,
+                                                            user_mention=interaction.user.mention,
+                                                            ticket_id=created_channel.id,
+                                                            ticket_name=created_channel.name,
+                                                            ticket_mention=created_channel.mention
+                                                            )
+        await interaction.response.send_message(ephemeral_message_on_creation,
                                                 ephemeral=True)
 
         ticket_created_formatted_date = datetime.strftime(created_channel.created_at, '%Y/%m/%d %H-%M-%S')
@@ -271,6 +284,9 @@ class CreateAChannelButton(discord.ui.View):
             message=message_on_creation, server_name=interaction.guild.name,
             user_id=interaction.user.id, user_name=interaction.user.name,
             user_mention=interaction.user.mention,
+            ticket_id=created_channel.id,
+            ticket_name=created_channel.name,
+            ticket_mention=created_channel.mention,
             manager_role="".join(f"<@&{role.id}>, " for role in ticket_manager_role))
 
         await created_channel.send(modified_message_on_creation,
@@ -305,6 +321,9 @@ class CloseTicketButton(discord.ui.View):
             message=message_on_deletion, server_name=interaction.guild.name,
             user_id=str(interaction.user.id), user_name=interaction.user.name,
             user_mention=interaction.user.mention,
+            ticket_id=self.user_channel.id,
+            ticket_name=self.user_channel.name,
+            ticket_mention=self.user_channel.mention,
             manager_role="".join(f"<@&{role.id}>, " for role in self.ticket_manager_role),
             seconds=seconds_before_deleting_ticket)
 
