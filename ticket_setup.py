@@ -57,3 +57,13 @@ description_on_button_embed = 'press button below to create a ticket.'
 title_on_button_embed = "{server_name}'s ticket support."
 footer_on_button_embed = "Do not open tickets for no reason..."
 #  ^ you can use "{server_name}" and "{server_id}"
+
+ticket_transcript_display_on_file = ('Message Info:\n'
+                                     ' |\n'
+                                     ' | Author: {user_name}\n'
+                                     ' | Message: "{content}"\n'
+                                     ' | Sent at: {sent_at}\n\n'
+                                     'User Info:\n |\n'
+                                     ' | User ID: {user_id}\n'
+                                     '----------------------------------------\n\n')
+
