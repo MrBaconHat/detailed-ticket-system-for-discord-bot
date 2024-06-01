@@ -1,0 +1,5 @@
+1. Added transcripts. Bot will now save every messages sent in ticket. The transcript can be view from the ticket log in attached file.
+
+2. Added new variables {ticket_name}, {ticket_id}, {ticket_mention}
+
+3. Improved script and less duplicates. Resulting in little bit more faster experince.
