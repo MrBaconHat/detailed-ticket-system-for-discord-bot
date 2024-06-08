@@ -24,11 +24,16 @@ ticket_manager_role_id = ['1231778425060982815']  # separate with coma.
 ticket_logging_channel_id = "1232312201126219806"
 # ^  this is where tickets will be logged if ticket is created or closed. (REQUIRED)
 
-seconds_before_deleting_ticket = 15
+seconds_before_deleting_ticket = 3
 # ^  after how many seconds ticket should be deleted when closing? (REQUIRED)
 
+ticket_limit_per_user = 2
 
-"""___________________________________________TICKET MESSAGES SETTINGS_______________________________________________"""
+include_bot_messages_in_logs = True  # this effects every single bot.
+include_bot_ticket_messages_count = False  # this effects every single bot.
+
+
+"""___________________________________________TICKET MESSAGES CUSTOMIZATION__________________________________________"""
 
 
 message_on_creation = "Hey, {user_mention} Please be patient and explain your issue. {manager_role}"
@@ -66,4 +71,6 @@ ticket_transcript_display_on_file = ('Message Info:\n'
                                      'User Info:\n |\n'
                                      ' | User ID: {user_id}\n'
                                      '----------------------------------------\n\n')
+
+ticket_limit_exceed_message = "You have exceeded the ticket limit. You've currently opened: {ticket_user_limit} tickets"
 
