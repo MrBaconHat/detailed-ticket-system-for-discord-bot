@@ -13,6 +13,9 @@ intents = discord.Intents.default()
 bot = commands.Bot(command_prefix='!', intents=intents)
 intents.message_content = True
 
+BOT_TOKEN = "Paste your bot token here"
+# ^  the token of your bot. it will be used to run the bot and add the commands to it. (REQUIRED)
+
 """
 ___________________________________________________________NOTE_________________________________________________________
                                                                                                                        |
@@ -37,9 +40,6 @@ IF YOU HAVE ANY QUESTIONS ABOUT THE SCRIPT OR WANT TO SUGGEST SOMETHING PLEASE C
 _______________________________________________________________________________________________________________________|
 """
 
-BOT_TOKEN = "Put your bot token inside comas"
-# ^  the token of your bot. it will be used to run the bot and add the commands to it. (REQUIRED)
-
 """
 ONLY ENTER THIS ZONE IF YOU UNDERSTAND EVERYTHING.
 """
@@ -58,13 +58,18 @@ if not seconds_before_deleting_ticket:
     sys.exit("Please enter a ticket closing duration in ticket_setup.py "
              "Error: Missing \"seconds_before_deleting_ticket\"")
 
+if int(seconds_before_deleting_ticket) < 3:
+    sys.exit("Seconds before deleting ticket must be higher or equal to 3. Please set it to 3 or higher in "
+             "ticket_setup.py")
 
-async def save_ticket_to_json(ticket_channel_id: str) -> NoReturn:
+
+async def save_ticket_to_json(ticket_channel_id: str, user_id: int) -> NoReturn:
     with open('ticket_data.json', 'r') as read_file:
         ticket_data = json.load(read_file)
 
     ticket_data['opened_tickets'][str(ticket_channel_id)] = {
-        "usersMessagesCount": {}
+        "usersMessagesCount": {},
+        'ticketAuthorId': user_id
     }
 
     with open('ticket_data.json', 'w') as write_file:
@@ -90,22 +95,10 @@ def add_members_to_json(ticket_channel_id: str, member_id: str) -> NoReturn:
     opened_ticket = ticket_data['opened_tickets'][str_ticket_channel_id]['usersMessagesCount']
 
     if member_id not in opened_ticket:
-        ticket_data['opened_tickets'][str_ticket_channel_id] = {
-            'usersMessagesCount': {
-                **{users_id: counter for users_id, counter in opened_ticket.items()},
-                member_id: 1
-            }
-        }
+        opened_ticket[member_id] = 1
 
     else:
-        counter = opened_ticket[member_id]
-        counter += 1
-        ticket_data['opened_tickets'][str_ticket_channel_id] = {
-            'usersMessagesCount': {
-                **{users_id: counter for users_id, counter in opened_ticket.items()},
-                member_id: counter
-            }
-        }
+        opened_ticket[member_id] += 1
 
     with open('ticket_data.json', 'w') as write_file:
         json.dump(ticket_data, write_file, indent=4)
@@ -115,10 +108,7 @@ def get_ticket_total_msgs(ticket_channel_id) -> int:
     with open('ticket_data.json', 'r') as read_file:
         ticket_data = json.load(read_file)
 
-    counter: int = 0
-    for counts in ticket_data['opened_tickets'][ticket_channel_id]['usersMessagesCount'].values():
-        counter += counts
-    return counter
+    return sum(ticket_data['opened_tickets'][ticket_channel_id]['usersMessagesCount'].values())
 
 
 def get_all_ticket_users(ticket_channel_id) -> dict:
@@ -135,22 +125,10 @@ def get_all_ticket_users(ticket_channel_id) -> dict:
     return dictionary
 
 
-def variable_management(message, seconds="", user_id="", user_name="", user_mention="", server_name="", manager_role="",
-                        server_id="", ticket_mention="", ticket_name="", ticket_id="", content="", sent_at=""):
-
-    return (message
-            .replace('{seconds}', f'{seconds}')
-            .replace('{user_id}', f'{user_id}')
-            .replace('{user_name}', f'{user_name}')
-            .replace('{user_mention}', f'{user_mention}')
-            .replace('{server_name}', f'{server_name}')
-            .replace('{manager_role}', f'{manager_role}')
-            .replace('{server_id}', f'{server_id}')
-            .replace('{ticket_mention}', f'{ticket_mention}')
-            .replace('{ticket_name}', f'{ticket_name}')
-            .replace('{ticket_id}', f'{ticket_id}')
-            .replace('{content}', f'{content}')
-            .replace('{sent_at}', f'{sent_at}'))
+def variable_management(message, **kwargs):
+    for key, value in kwargs.items():
+        message = message.replace(f'{{{key}}}', str(value))
+    return message
 
 
 async def save_transcript(ticket_channel_object: discord.TextChannel):
@@ -161,9 +139,18 @@ async def save_transcript(ticket_channel_object: discord.TextChannel):
 
     dictionary_1 = json_data['closed_tickets']
 
+    opened_ticket = json_data['opened_tickets'][ticket_channel_id]
+    closed_ticket = json_data['closed_tickets']
+
     all_messages = []
 
     async for msg in ticket_channel_object.history(limit=None, oldest_first=True):
+
+        if msg.author.bot and not include_bot_messages_in_logs:
+            print("in if condition")
+            continue
+
+        print("in for loop not if condition")
 
         message_log = {
             "content": msg.content,
@@ -172,16 +159,13 @@ async def save_transcript(ticket_channel_object: discord.TextChannel):
             "time": str(msg.created_at.strftime('%b %d(%a), %Y'))
         }
 
-        # Use the message ID as the key in the dictionary
         all_messages.append(message_log)
 
-    new_closed_ticket = json_data['closed_tickets'] = {
-        f'{ticket_channel_id}': {
-            "usersMessagesCount": len(all_messages) - 1,
-            "messagesLogs": all_messages
-        }
-    }
-    json_data['closed_tickets'] = {**dictionary_1, **new_closed_ticket}
+    transfer_var = closed_ticket[f"{ticket_channel_id}"] = opened_ticket
+    transfer_var["totalMessagesInLogs"] = len(all_messages)
+    transfer_var["messagesLogs"] = all_messages
+
+    json_data['closed_tickets'] = dictionary_1
 
     with open('ticket_data.json', 'w') as write_file:
         json.dump(json_data, write_file, indent=4)
@@ -218,6 +202,25 @@ def moveCloseDataToOpenData(ticket_id):
         with open('ticket_data.json', 'w') as update_file:
             json.dump(data_json, update_file, indent=4)
 
+def checkUserTickets(user_id):
+    if ticket_limit_per_user:
+        with open('ticket_data.json', 'r') as read_file:
+            json_data = json.load(read_file)
+
+        opened_tickets_json = json_data['opened_tickets']
+
+        total_user_tickets = 0
+
+        for tickets in opened_tickets_json:
+            if total_user_tickets == ticket_limit_per_user-1:
+                raise ValueError(
+                    variable_management(ticket_limit_exceed_message, ticket_user_limit=ticket_limit_per_user)
+                )
+
+            ticket_author = opened_tickets_json[tickets].get('ticketAuthorId')
+            if ticket_author == user_id:
+                total_user_tickets += 1
+
 class CreateAChannelButton(discord.ui.View):
 
     def __init__(self):
@@ -229,18 +232,20 @@ class CreateAChannelButton(discord.ui.View):
             pass
 
         try:
-            ticket_category_object = bot.fetch_channel(int(ticket_category_id))
-        except ValueError:
-            ticket_category_object = None
+            checkUserTickets(interaction.user.id)
+        except ValueError as error_message:
+            await interaction.response.send_message(content=error_message, ephemeral=True)
+            return
 
-        guild_category = (None if not ticket_category_object else ticket_category_object)
+        guild_category = bot.fetch_channel(int(ticket_category_id)) if ticket_category_id else None
 
-        ticket_manager_role_base = [interaction.guild.get_role(int(role_id)) for role_id in ticket_manager_role_id]
-        ticket_manager_role = [manager_roles for manager_roles in ticket_manager_role_base if manager_roles]
+        ticket_manager_role = [
+            interaction.guild.get_role(int(role_id)) for role_id in ticket_manager_role_id
+            if interaction.guild.get_role(int(role_id))
+        ]
+
         if not ticket_manager_role:
             sys.exit("Manager IDs are incorrect... Please enter correct Manager IDs to continue\n\n\n\n")
-
-        guild_everyone_role: discord.Role = interaction.guild.get_role(interaction.guild.id)
 
         logging_channel = bot.get_channel(int(ticket_logging_channel_id))
         if not logging_channel:
@@ -249,13 +254,12 @@ class CreateAChannelButton(discord.ui.View):
                                                     ephemeral=True)
             return
 
-        bot_role = None
-        all_bot_roles = bot.get_guild(interaction.guild.id).get_member(bot.user.id)
+        # Preparing to fit in roles and ticket permissions
 
-        for role in all_bot_roles.roles:
-            if role.is_bot_managed():
-                bot_role = interaction.guild.get_role(role.id)
-                break
+        bot_role = next((role for role in interaction.guild.get_member(bot.user.id).roles if role.is_bot_managed()),
+                        None)
+
+        guild_everyone_role: discord.Role = interaction.guild.get_role(interaction.guild.id)
 
         manager_role_overwrite = discord.PermissionOverwrite.from_pair(
             discord.Permissions(117824),
@@ -295,7 +299,7 @@ class CreateAChannelButton(discord.ui.View):
             await interaction.response.send_message("I dont have permission to create channel.", ephemeral=True)
             return
 
-        await save_ticket_to_json(str(created_channel.id))
+        await save_ticket_to_json(str(created_channel.id), interaction.user.id)
 
         start_time = time.time()
 
@@ -411,8 +415,8 @@ class CloseTicketButton(discord.ui.View):
             await self.user_channel.send("I dont have permission to delete channels.")
 
         total_msgs = get_ticket_total_msgs(self.user_channel.id)
-        all_users_msgs = 0 if not get_all_ticket_users(self.user_channel.id) \
-            else get_all_ticket_users(self.user_channel.id)
+        all_users_msgs = get_all_ticket_users(self.user_channel.id) or {"No Messages were sent": 0}
+
         end_time = time.time()
         ticket_end_time = datetime.now()
 
@@ -431,11 +435,13 @@ class CloseTicketButton(discord.ui.View):
         embed = discord.Embed(
             title='Ticket Deleted',
             description=f"Ticket opened by: {self.ticket_creator.name}\n\n"
+                        
                         f"__User Info:__\n\n"
                         f"- **User ID:** {self.ticket_creator.id}\n"
                         f"- **User Mention:** {self.ticket_creator.mention}\n"
                         f"- **User Creation Date:** <t:{int(self.user_join_date.timestamp())}:f>\n"
                         f"- **Server Member Since:** <t:{int(self.guild_joined_date.timestamp())}:f>\n\n"
+                        
                         f"__Ticket Info:__\n\n"
                         f"- **Ticket Name:** {self.user_channel.name}\n"
                         f"- **Ticket Creation:** {int(self.ticket_created_time.timestamp())}\n"
@@ -447,6 +453,7 @@ class CloseTicketButton(discord.ui.View):
                         f"- **Ticket Opening Log:** "
                         f"https://discord.com/channels/{interaction.guild.id}/{self.logging_channel.id}/"
                         f"{self.logging_message.id}\n\n"
+                        
                         f"__Ticket Chat Info:__\n\n"
                         f"- **Total Messages Sent:** {total_msgs}\n"
                         f"- **Messages By Users:**\n " + "".join(f"\n> - {users}: {counter}"
@@ -484,23 +491,25 @@ class RequestMessagesLogsPagination(discord.ui.View):
         t_content_list = []
         all_messages = json_data['closed_tickets'][f'{self.ticket_object.id}']['messagesLogs']
 
-        if len(all_messages) <= 0:
+        if not all_messages:
             t_content_list.append('No Messages were sent: 0')
         else:
-            for stats in all_messages:
-                author = stats.get('author')
-                author_name = stats.get('author_name')
-                content = stats.get('content')
-                sent_at = stats.get('time')
-                message = variable_management(message=ticket_transcript_display_on_file, user_id=author,
-                                              user_name=author_name, content=content, sent_at=sent_at,
-                                              server_name=interaction.guild.name, server_id=str(interaction.guild.id),
-                                              ticket_id=self.ticket_object.id, ticket_name=self.ticket_object.name,
-                                              ticket_mention=self.ticket_object.mention, user_mention=f'<@{author}>')
-                t_content_list.append(message)
+            t_content_list.extend(
+                variable_management(
+                    message=ticket_transcript_display_on_file,
+                    user_id=stats.get("author"),
+                    user_name=stats.get("author_name"),
+                    content=stats.get("content"),
+                    sent_at=stats.get("sent_at"),
+                    server_name=interaction.guild.name,
+                    server_id=str(interaction.guild.id),
+                    ticket_id=self.ticket_object.id, ticket_name=self.ticket_object.name,
+                    ticket_mention=self.ticket_object.mention, user_mention=f'<@{stats.get("author")}>'
+                )for stats in all_messages
+            )
 
         buffer = io.BytesIO()
-        messages = ''.join(f"{msg}" for msg in t_content_list)
+        messages = ''.join(t_content_list)
         buffer.write(messages.encode('utf-8'))
         buffer.seek(0)
         file = discord.File(buffer, filename='transcript.yaml')
@@ -537,8 +546,14 @@ async def ticket(ctx, ticket_panel: discord.TextChannel):
 
 
 @bot.event
+async def on_ready():
+    await bot.tree.sync()
+    print('Successfully logged in as:', bot.user.name)
+
+
+@bot.event
 async def on_message(message):
-    if message.author.bot:
+    if message.author.bot and not include_bot_ticket_messages_count:
         return
 
     with open('ticket_data.json', 'r') as read_file:
@@ -549,9 +564,21 @@ async def on_message(message):
 
 
 @bot.event
-async def on_ready():
-    await bot.tree.sync()
-    print('Successfully logged in as:', bot.user.name)
+async def on_guild_channel_delete(channel):
+    if channel.guild.me == bot.user:
+        return
+
+    with open('ticket_data.json', 'r') as read_file:
+        json_data = json.load(read_file)
+
+    opened_tickets = json_data["opened_tickets"]
+
+    if str(channel.id) in opened_tickets:
+        print("in if")
+        del opened_tickets[str(channel.id)]
+
+        with open('ticket_data.json', 'w') as update_file:
+            json.dump(json_data, update_file, indent=4)
 
 
 try:
@@ -561,4 +588,3 @@ except discord.errors.LoginFailure:
     timing = datetime.strftime(datetime.now(), "%Y-%m-%d %H:%M:%S")
     sys.exit(f"\n[{timing}] [ERROR   ] Could not start up: You've provided the incorrect bot token...\n\n"
              f"Incorrect bot token: \"{BOT_TOKEN}\"")
-
