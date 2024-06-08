@@ -3,3 +3,12 @@
 2. Added new variables {ticket_name}, {ticket_id}, {ticket_mention}
 
 3. Improved script and less duplicates. Resulting in little bit more faster experince.
+
+4. Added ticket limits. This makes sure that users can only open certain amount of tickets. You can find this flexibility in ticket_setup.py, 
+    > 1. Additionally you can set it to "None" or "0" to have no limit at all. 
+    > 2. This also have Custom Message which you can set. 
+    > 3. There's also a variable associated with this, "{ticket_user_limit}"
+
+5. Added more flexibility. Now ticket_setup.py also have 2 new settings, "include_bot_messages_in_logs" and "include_bot_ticket_messages_count". 
+   > 1. "include_bot_messages_in_logs" is to allow or deny bots messages from being logged.  You can do it by setting it to "True" or "False".
+   > 2. "include_bot_ticket_messages_count" this makes sure that bot messages should be counted in message counter or not. You can do it by setting it to "True" or "False".
