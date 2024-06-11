@@ -24,13 +24,34 @@ ticket_manager_role_id = ['1231778425060982815']  # separate with coma.
 ticket_logging_channel_id = "1232312201126219806"
 # ^  this is where tickets will be logged if ticket is created or closed. (REQUIRED)
 
-seconds_before_deleting_ticket = 3
+seconds_before_deleting_ticket = 15
 # ^  after how many seconds ticket should be deleted when closing? (REQUIRED)
 
 ticket_limit_per_user = 2
 
 include_bot_messages_in_logs = True  # this effects every single bot.
 include_bot_ticket_messages_count = False  # this effects every single bot.
+
+dm_transcript_to_ticket_author = True
+
+
+"""___________________________________________TICKET BUTTON CUSTOMIZATION____________________________________________"""
+
+
+create_ticket_button_text = "Create a ticket"
+create_ticket_button_color = 'green'
+create_ticket_button_emoji = None
+
+close_ticket_button_text = "Close ticket"
+close_ticket_button_color = 'red'
+close_ticket_button_emoji = None
+
+view_transcript_button_text = 'View Transcript File'
+view_transcript_button_color = 'green'
+view_transcript_button_emoji = None
+
+
+#  you can only use the following colors: red, green, gray, blue
 
 
 """___________________________________________TICKET MESSAGES CUSTOMIZATION__________________________________________"""
@@ -47,9 +68,9 @@ message_on_creation_ephemeral = "Successfully created your ticket: {ticket_menti
 #  ^ you can also use: "{ticket_mention}" to tag the ticket!
 
 
-message_on_deletion = 'ticket will be deleted in: {seconds} seconds {user_mention}'
+message_on_deletion = 'ticket will be deleted in: {seconds_countdown} {user_mention}'
 #  ^ the message you want to send when ticket is being closed. (REQUIRED)
-#  ^ you can also use: "{seconds}" to display how many seconds until ticket closes.
+#  ^ you can also use: "{seconds}" or "{seconds_countdown}" to display how many seconds until ticket closes.
 #  ^ you can put "{server_name}" to display your server name. this will be replaced by your server name
 #  ^ you can also use: "{user_name}" or "{user_mention}" or "{user_id}" to get user info
 #  ^ you can also use: "{manager_role}" to mention the ticket manager role!
@@ -74,3 +95,9 @@ ticket_transcript_display_on_file = ('Message Info:\n'
 
 ticket_limit_exceed_message = "You have exceeded the ticket limit. You've currently opened: {ticket_user_limit} tickets"
 
+"""___________________________________________SCRIPT SETTINGS (SENSITIVE)____________________________________________"""
+"""
+NOTE: DO NOT MAKE ANY CHANGES, ONLY MODIFY IF YOU KNOW WHAT YOU ARE DOING.
+"""
+
+reactivate_ticket_creation_buttons_on_startup = True
