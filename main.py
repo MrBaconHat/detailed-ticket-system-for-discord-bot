@@ -1,3 +1,5 @@
+import platform
+import logging
 import discord
 import asyncio
 import sys
@@ -9,12 +11,26 @@ from ticket_setup import *
 from datetime import datetime, timedelta
 from discord.ext import commands
 
-intents = discord.Intents.default()
-bot = commands.Bot(command_prefix='!', intents=intents)
-intents.message_content = True
 
-BOT_TOKEN = "Paste your bot token here"
+BOT_TOKEN = "paste your bot token here"
 # ^  the token of your bot. it will be used to run the bot and add the commands to it. (REQUIRED)
+
+
+class MyApp(commands.Bot):
+    def __init__(self):
+        intents = discord.Intents.default()
+        intents.message_content = True
+        intents.moderation = True
+
+        super().__init__(command_prefix='!', intents=intents)
+
+    if reactivate_ticket_creation_buttons_on_startup:
+        async def setup_hook(self) -> None:
+            self.add_view(CreateAChannelButton())
+
+
+bot = MyApp()
+
 
 """
 ___________________________________________________________NOTE_________________________________________________________
@@ -38,30 +54,65 @@ WITH ANYONE WITH YOUR BOT TOKEN PLACED INSIDE IT.                               
                                                                                                                        |
 IF YOU HAVE ANY QUESTIONS ABOUT THE SCRIPT OR WANT TO SUGGEST SOMETHING PLEASE CONTACT: mr_baconhat(discord)           |
 _______________________________________________________________________________________________________________________|
+                                                                                                                       |
+PLEASE ONLY MAKE CHANGES BELOW IF YOU UNDERSTAND EVERYTHING.. MAKING CHANGES WHICH YOU DON'T UNDERSTAND CAN RESULT IN  |
+SCRIPT RETURNING ERRORS.                                                                                               |
+                                                                                                                       |
+-----------------------------------------------------------------------------------------------------------------------|
 """
 
-"""
-ONLY ENTER THIS ZONE IF YOU UNDERSTAND EVERYTHING.
-"""
+mandatory_configs = [
+    ("ticket_manager_role_id", "Please put your manager role ID. It is a required input."),
+    ("ticket_logging_channel_id", "Please paste a logging channel ID."),
+    ("seconds_before_deleting_ticket", "Please enter a ticket closing duration in ticket_setup.py. "
+                                       "Error: Missing \"seconds_before_deleting_ticket\""),
+    ("ticket_limit_exceed_message", "Ticket limit exceed message shouldn't be empty. Please include a message"),
+    ("message_on_deletion", "Ticket deletion message shouldn't be empty. Please include a message"),
+    ("message_on_creation", "Ticket messages on creation shouldn't be empty. Please include a message"),
+    ("message_on_creation_ephemeral", "Ticket messages on creation shouldn't be empty. Please include a message")
+]
 
 for roles in ticket_manager_role_id:
     if not roles.isdigit():
         sys.exit(f'Your manager role ID: {roles} is incorrect.. Please enter it correctly')
 
-if not ticket_manager_role_id:
-    sys.exit('Please put your manager role ID. It is a required input.')
+for config, error_message in mandatory_configs:
+    value = globals().get(config)
+    if not value:
+        sys.exit(error_message)
 
-if not ticket_logging_channel_id:
-    sys.exit("Please paste a logging channel ID.")
+try:
+    seconds = int(seconds_before_deleting_ticket)
+    assert seconds >= 3, ("Seconds before deleting ticket must be higher or equal to 3. "
+                          "Please set it to 3 or higher in ticket_setup.py")
+except (TypeError, ValueError):
+    sys.exit("Error: time should be in integer.")
+except AssertionError as error_message:
+    sys.exit(error_message)
 
-if not seconds_before_deleting_ticket:
-    sys.exit("Please enter a ticket closing duration in ticket_setup.py "
-             "Error: Missing \"seconds_before_deleting_ticket\"")
+if any(color not in ["red", "blue", "green", "gray", "grey"]
+       for color in [close_ticket_button_color, create_ticket_button_color, view_transcript_button_color]):
+    sys.exit("Please only use the provided colors for the buttons because they are the supported ones.")
 
-if int(seconds_before_deleting_ticket) < 3:
-    sys.exit("Seconds before deleting ticket must be higher or equal to 3. Please set it to 3 or higher in "
-             "ticket_setup.py")
+class Colors:
+    BLACK = '\x1b[30m'
+    RED = '\x1b[31m'
+    GREEN = '\x1b[32m'
+    YELLOW = '\x1b[33m'
+    BLUE = '\x1b[34m'
+    MEGENTA = '\x1b[35m'
+    CYAN = '\x1b[36m'
+    WHITE_RESET = '\033[0m'
 
+
+discord_button_colors = {
+        "green": discord.ButtonStyle.green,
+        "red": discord.ButtonStyle.red,
+        "gray": discord.ButtonStyle.gray,
+        "grey": discord.ButtonStyle.grey,
+        "blue": discord.ButtonStyle.blurple,
+        "blurple": discord.ButtonStyle.blurple
+    }
 
 async def save_ticket_to_json(ticket_channel_id: str, user_id: int) -> NoReturn:
     with open('ticket_data.json', 'r') as read_file:
@@ -75,6 +126,8 @@ async def save_ticket_to_json(ticket_channel_id: str, user_id: int) -> NoReturn:
     with open('ticket_data.json', 'w') as write_file:
         json.dump(ticket_data, write_file, indent=4)
 
+def getUnixAhead():
+    return time.time() - -seconds_before_deleting_ticket
 
 def clear_ticket_from_json(ticket_channel_id: str) -> NoReturn:
     with open('ticket_data.json', 'r') as read_file:
@@ -150,8 +203,6 @@ async def save_transcript(ticket_channel_object: discord.TextChannel):
             print("in if condition")
             continue
 
-        print("in for loop not if condition")
-
         message_log = {
             "content": msg.content,
             "author": msg.author.id,
@@ -224,9 +275,11 @@ def checkUserTickets(user_id):
 class CreateAChannelButton(discord.ui.View):
 
     def __init__(self):
-        super().__init__(timeout=7776000)
+        super().__init__(timeout=None)
 
-    @discord.ui.button(label='Create a ticket', style=discord.ButtonStyle.success)
+    @discord.ui.button(label='Create a ticket', style=discord_button_colors.get(create_ticket_button_color),
+                       custom_id="createAChannel",
+                       emoji=create_ticket_button_emoji)
     async def create_channel(self, interaction: discord.Interaction, button: discord.ui.Button):
         if button:
             pass
@@ -375,21 +428,24 @@ class CloseTicketButton(discord.ui.View):
     def __init__(self, channel_object, ticket_author_object, guild_object, ticket_category_object,
                  ticket_manager_role_object, start_time, ticket_creation, logging_message_object,
                  guild_joined_date, user_join_date, logging_channel):
-        super().__init__(timeout=7776000)
+        super().__init__(timeout=None)
 
         self.user_channel = channel_object
         self.ticket_creator = ticket_author_object
         self.ticket_guild = guild_object
         self.ticket_category = ticket_category_object
         self.ticket_manager_role = ticket_manager_role_object
+
         self.ticket_start_time = start_time
         self.ticket_created_time = ticket_creation
+
         self.logging_message = logging_message_object
         self.guild_joined_date = guild_joined_date
         self.user_join_date = user_join_date
         self.logging_channel = logging_channel
 
-    @discord.ui.button(label='Close ticket', style=discord.ButtonStyle.red)
+    @discord.ui.button(label='Close ticket', style=discord_button_colors.get(close_ticket_button_color),
+                       emoji=close_ticket_button_emoji)
     async def close(self, interaction: discord.Interaction, button: discord.ui.button):
         if button:
             pass
@@ -402,7 +458,9 @@ class CloseTicketButton(discord.ui.View):
             ticket_name=self.user_channel.name,
             ticket_mention=self.user_channel.mention,
             manager_role="".join(f"<@&{role.id}>, " for role in self.ticket_manager_role),
-            seconds=seconds_before_deleting_ticket)
+            seconds=seconds_before_deleting_ticket,
+            seconds_countdown=f"<t:{int(getUnixAhead())}:R>"
+        )
 
         await interaction.response.send_message(modified_message_on_deletion)
         await asyncio.sleep(int(seconds_before_deleting_ticket))
@@ -464,23 +522,27 @@ class CloseTicketButton(discord.ui.View):
         embed.set_author(icon_url=interaction.user.avatar, name=interaction.user.name,
                          url=f'https://discord.com/users/{interaction.user.id}')
 
-        view = RequestMessagesLogsPagination(self.user_channel)
+        view = RequestMessagesLogs(self.user_channel)
 
         try:
             await self.logging_channel.send(embed=embed, view=view)
         except discord.errors.Forbidden:
             await interaction.response.send_message("I dont have permission to send messages in logging channel.",
                                                     ephemeral=True)
+            return
+        if dm_transcript_to_ticket_author:
+            await self.ticket_creator.send(view=view)
         clear_ticket_from_json(self.user_channel.id)
 
 
-class RequestMessagesLogsPagination(discord.ui.View):
+class RequestMessagesLogs(discord.ui.View):
 
     def __init__(self, ticket_channel_object):
-        super().__init__(timeout=7776000)
+        super().__init__(timeout=None)
         self.ticket_object = ticket_channel_object
 
-    @discord.ui.button(label='View Transcript File', style=discord.ButtonStyle.success)
+    @discord.ui.button(label='View Transcript File', style=discord_button_colors.get(view_transcript_button_color),
+                       emoji=view_transcript_button_emoji)
     async def request(self, interaction: discord.Interaction, button: discord.ui.button):
         if button:
             pass
@@ -489,7 +551,12 @@ class RequestMessagesLogsPagination(discord.ui.View):
             json_data = json.load(read_file)
 
         t_content_list = []
-        all_messages = json_data['closed_tickets'][f'{self.ticket_object.id}']['messagesLogs']
+        all_messages = []
+        try:
+            all_messages = json_data['closed_tickets'][f'{self.ticket_object.id}']['messagesLogs']
+        except KeyError as missing_channel:
+            if missing_channel == f'{self.ticket_object.id}':
+                pass
 
         if not all_messages:
             t_content_list.append('No Messages were sent: 0')
@@ -501,8 +568,6 @@ class RequestMessagesLogsPagination(discord.ui.View):
                     user_name=stats.get("author_name"),
                     content=stats.get("content"),
                     sent_at=stats.get("sent_at"),
-                    server_name=interaction.guild.name,
-                    server_id=str(interaction.guild.id),
                     ticket_id=self.ticket_object.id, ticket_name=self.ticket_object.name,
                     ticket_mention=self.ticket_object.mention, user_mention=f'<@{stats.get("author")}>'
                 )for stats in all_messages
@@ -512,7 +577,7 @@ class RequestMessagesLogsPagination(discord.ui.View):
         messages = ''.join(t_content_list)
         buffer.write(messages.encode('utf-8'))
         buffer.seek(0)
-        file = discord.File(buffer, filename='transcript.yaml')
+        file = discord.File(buffer, filename='transcript.ruby')
         await interaction.response.send_message(file=file, ephemeral=True)
 
 
@@ -545,10 +610,29 @@ async def ticket(ctx, ticket_panel: discord.TextChannel):
                        ephemeral=True)
 
 
+def getPythonTimingFormat():
+    return datetime.strftime(datetime.now(), "%Y-%m-%d %H:%M:%S")
+
 @bot.event
 async def on_ready():
+    print("Starting...")
     await bot.tree.sync()
-    print('Successfully logged in as:', bot.user.name)
+    print(f'{Colors.RED}About Bot:{Colors.WHITE_RESET}\n'
+          f'\t{Colors.YELLOW}Successfully logged in as: {Colors.WHITE_RESET}{bot.user.name} ({bot.user.id})\n'
+          f'\t{Colors.YELLOW}Bot User: {Colors.WHITE_RESET}{bot.user.name}\n'
+          f'\t{Colors.YELLOW}Bot ID: {Colors.WHITE_RESET}{bot.user.id}\n'
+          f'\t{Colors.YELLOW}Bot Started At: {Colors.WHITE_RESET}{getPythonTimingFormat()}\n'
+          f'{Colors.RED}{"-" * 60}{Colors.WHITE_RESET}\n'
+          f'{Colors.RED}About Discord Module:{Colors.WHITE_RESET}\n'
+          f'\t{Colors.CYAN}Discord Module Version: {Colors.WHITE_RESET}{discord.__version__}\n'
+          f'\t{Colors.CYAN}Latency: {Colors.WHITE_RESET}{bot.latency * 1000:.2f} ms\n'
+          f'\t{Colors.CYAN}Registered Commands: {Colors.WHITE_RESET}{len(bot.tree.get_commands())}\n'
+          f'{Colors.RED}{"-" * 60}{Colors.WHITE_RESET}\n'
+          f'{Colors.RED}About System:{Colors.WHITE_RESET}\n'
+          f'\t{Colors.GREEN}Python Version: {Colors.WHITE_RESET}{platform.python_version()}\n'
+          f'\t{Colors.GREEN}Operating System: {Colors.WHITE_RESET}{platform.system()} {platform.release()}\n')
+
+    logging.warning("Now logging..\n")
 
 
 @bot.event
@@ -564,27 +648,30 @@ async def on_message(message):
 
 
 @bot.event
-async def on_guild_channel_delete(channel):
-    if channel.guild.me == bot.user:
+async def on_audit_log_entry_create(entry):
+
+    if str(entry.action).lower() != "AuditLogAction.channel_delete".lower():
+        return
+    if entry.user_id == bot.user.id:
         return
 
     with open('ticket_data.json', 'r') as read_file:
         json_data = json.load(read_file)
 
-    opened_tickets = json_data["opened_tickets"]
+    channel_id = entry.target.id
+    opened_tickets = json_data['opened_tickets']
 
-    if str(channel.id) in opened_tickets:
-        print("in if")
-        del opened_tickets[str(channel.id)]
+    if str(channel_id) in opened_tickets:
+        del opened_tickets[str(channel_id)]
 
         with open('ticket_data.json', 'w') as update_file:
             json.dump(json_data, update_file, indent=4)
-
 
 try:
     bot.run(BOT_TOKEN)
 
 except discord.errors.LoginFailure:
-    timing = datetime.strftime(datetime.now(), "%Y-%m-%d %H:%M:%S")
+    timing = getPythonTimingFormat()
     sys.exit(f"\n[{timing}] [ERROR   ] Could not start up: You've provided the incorrect bot token...\n\n"
              f"Incorrect bot token: \"{BOT_TOKEN}\"")
+
